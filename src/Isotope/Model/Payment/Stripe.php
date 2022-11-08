@@ -3,6 +3,7 @@
 namespace Doublespark\IsotopeStripeBundle\Isotope\Model\Payment;
 
 use Contao\CoreBundle\Monolog\ContaoContext;
+use Contao\Input;
 use Contao\Module;
 use Contao\System;
 use Haste\Util\StringUtil as HasteStringUtil;
@@ -14,6 +15,7 @@ use Psr\Log\LogLevel;
 use Stripe\Checkout\Session;
 use Stripe\Event;
 use Stripe\Webhook;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * 1. getPostsaleOrder is called first, this retrieves the Stripe checkoutSession and sets it on the module
@@ -138,6 +140,28 @@ class Stripe extends Postsale
         {
             if($objOrder instanceof Order)
             {
+                if($objOrder->isCheckoutComplete())
+                {
+                    System::getContainer()->get('monolog.logger.contao')->log(
+                        LogLevel::ERROR,
+                        "Stripe: checkout for Order ID already ".$objOrder->id." completed",
+                        ['contao' => new ContaoContext('Doublespark\IsotopeStripeBundle\Isotope\Model\Payment\Stripe::processPostsale', TL_ERROR)]
+                    );
+
+                    return new Response();
+                }
+
+                if(!$objOrder->checkout())
+                {
+                    System::getContainer()->get('monolog.logger.contao')->log(
+                        LogLevel::ERROR,
+                        "Stripe:  checkout for Order ID ".$objOrder->id." failed",
+                        ['contao' => new ContaoContext('Doublespark\IsotopeStripeBundle\Isotope\Model\Payment\Stripe::processPostsale', TL_ERROR)]
+                    );
+
+                    return new Response('', Response::HTTP_INTERNAL_SERVER_ERROR);
+                }
+
                 $objOrder->setDatePaid(time());
                 $objOrder->updateOrderStatus($this->new_order_status);
 
