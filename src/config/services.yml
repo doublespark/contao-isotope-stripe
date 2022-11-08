@@ -1,0 +1,10 @@
+services:
+  _defaults:
+    autoconfigure: true
+    autowire: true
+
+  # Autoconfigure classes
+  Doublespark\IsotopeStripeBundle\:
+    resource: '../../src/*'
+    exclude:
+      - '../../src/config'
